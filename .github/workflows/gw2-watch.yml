@@ -1,0 +1,50 @@
+# Polls ArenaNet's CDN for the current Guild Wars 2 build. When it moves past the build the
+# committed signatures were made for, opens (or updates) an issue. A GitHub-hosted runner
+# cannot fetch the new executable (the CDN uses the launcher's own protocol), so the actual
+# re-signing happens on the self-hosted runner (gw2-resign.yml) or by hand.
+name: gw2-watch
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare CDN build with the signed build
+        id: cmp
+        run: |
+          live=$(curl -sf --max-time 30 http://assetcdn.101.arenanetworks.com/latest64/101 | awk '{print $1}')
+          signed=$(tr -d '[:space:]' < signatures/gw2_build.txt)
+          echo "live=$live signed=$signed"
+          echo "live=$live" >> "$GITHUB_OUTPUT"
+          echo "signed=$signed" >> "$GITHUB_OUTPUT"
+          if [ -n "$live" ] && [ "$live" != "$signed" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Open or refresh the issue
+        if: steps.cmp.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIVE: ${{ steps.cmp.outputs.live }}
+          SIGNED: ${{ steps.cmp.outputs.signed }}
+        run: |
+          title="GW2 build $LIVE released (signatures are for $SIGNED)"
+          existing=$(gh issue list --label gw2-update --state open --json number,title --jq '.[0].number')
+          body="ArenaNet's CDN reports build **$LIVE**; the committed signatures were generated for build **$SIGNED**.
+
+          The plugin refuses a stale signature automatically (the overlay falls back to arcdps), so nothing breaks, but the realtime source is off until re-signed.
+
+          - If the self-hosted runner is online it will regenerate the signature the next time the game has patched locally (workflow *gw2-resign*).
+          - By hand: patch the game, then \`python tools/binja/make_sigs.py \"C:\\Program Files\\Guild Wars 2\\Gw2-64.exe\" signatures/arcdps_boon_magnifier_sigs.ini --targets tools/binja/targets_gw2.py --enable\`, update \`signatures/gw2_build.txt\`, bump the version in CMakeLists.txt, commit and tag."
+          gh label create gw2-update --color D93F0B --description "Guild Wars 2 patched; signatures need regenerating" 2>/dev/null || true
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --title "$title" --body "$body"
+          else
+            gh issue create --title "$title" --label gw2-update --body "$body"
+          fi

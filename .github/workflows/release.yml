@@ -1,0 +1,48 @@
+# Tag a commit vX.Y.Z (matching the version in CMakeLists.txt) and this builds it, runs the
+# tests, and publishes a GitHub release with the DLL attached. Nexus' updater watches the
+# repo's releases: it downloads the first .dll asset of the newest tag that outranks the
+# installed addon's version.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+      - name: Check the tag matches CMakeLists.txt
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $cm = (Select-String -Path CMakeLists.txt -Pattern 'project\(\S+ VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+          if ($tag -ne $cm) { throw "tag $tag != CMakeLists.txt version $cm" }
+      - run: cmake -S . -B build/Release -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build/Release
+      - run: build/Release/core_tests.exe
+      - run: |
+          build/Release/smoke_nexus.exe build/Release/arcdps_boon_magnifier.dll
+          build/Release/smoke_arcdps.exe build/Release/arcdps_boon_magnifier.dll
+      - name: Release notes
+        shell: pwsh
+        run: |
+          $build = (Get-Content signatures/gw2_build.txt).Trim()
+          $ts = (Select-String -Path signatures/arcdps_boon_magnifier_sigs.ini -Pattern 'pe_timestamp=(\S+)').Matches[0].Groups[1].Value
+          @"
+          Built for Guild Wars 2 build $build (exe timestamp $ts). Nexus installs the DLL automatically;
+          the signature file is embedded, a copy is attached for manual installs.
+          "@ | Set-Content notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: |
+            build/Release/arcdps_boon_magnifier.dll
+            signatures/arcdps_boon_magnifier_sigs.ini

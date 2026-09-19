@@ -1,0 +1,4 @@
+#include "resource.h"
+
+IDR_ICON_STABILITY RCDATA "../../assets/stability.png"
+IDR_DEFAULT_SIGS RCDATA "../../signatures/arcdps_boon_magnifier_sigs.ini"

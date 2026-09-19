@@ -1,0 +1,7 @@
+build/
+*.ini
+.vs/
+CMakeUserPresets.json
+tools/binja/targets.py
+tools/binja/__pycache__/
+!signatures/*.ini

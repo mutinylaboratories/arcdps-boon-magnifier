@@ -1,0 +1,49 @@
+# Runs on the self-hosted runner (your PC, with the game and Binary Ninja installed).
+# When the installed Gw2-64.exe no longer matches the committed signatures, regenerates
+# them with Binary Ninja, verifies, bumps the patch version, commits and tags - which
+# triggers release.yml, and Nexus then updates everyone. Does nothing while the local
+# game is still on the signed build (i.e. until you have patched).
+name: gw2-resign
+
+on:
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Regenerate even if the exe timestamp matches"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency: gw2-resign
+
+jobs:
+  resign:
+    runs-on: [self-hosted, windows, gw2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Regenerate signatures if the installed exe changed
+        id: resign
+        shell: pwsh
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          $r = & tools/ci/resign.ps1 -Force:([bool]::Parse("$env:FORCE" -eq "" ? "false" : "$env:FORCE"))
+          if ($LASTEXITCODE -ne 0) { throw "resign.ps1 failed" }
+          "changed=$($r.Changed)" >> $env:GITHUB_OUTPUT
+          "version=$($r.Version)" >> $env:GITHUB_OUTPUT
+      - name: Commit, tag, push
+        if: steps.resign.outputs.changed == 'true'
+        shell: pwsh
+        run: |
+          git config user.name "gw2-resign bot"
+          git config user.email "gw2-resign@users.noreply.github.com"
+          git add signatures/ CMakeLists.txt
+          git commit -m "Re-sign for GW2 build $(Get-Content signatures/gw2_build.txt)"
+          git tag "v${{ steps.resign.outputs.version }}"
+          git push origin HEAD:main --tags

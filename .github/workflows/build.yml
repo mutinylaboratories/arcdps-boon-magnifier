@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "*.md"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+      - name: Configure
+        run: cmake -S . -B build/Release -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build/Release
+      - name: Unit tests
+        run: build/Release/core_tests.exe
+      - name: Headless host tests
+        run: |
+          build/Release/smoke_nexus.exe build/Release/arcdps_boon_magnifier.dll
+          build/Release/smoke_arcdps.exe build/Release/arcdps_boon_magnifier.dll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arcdps_boon_magnifier
+          path: |
+            build/Release/arcdps_boon_magnifier.dll
+            signatures/arcdps_boon_magnifier_sigs.ini
