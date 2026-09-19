@@ -130,6 +130,6 @@ AddonDefinition_t* GetAddonDef() {
     g_def.Unload = addon_unload;
     g_def.Flags = AF_None;
     g_def.Provider = UP_GitHub;   // Nexus fetches the newest release's .dll asset when its tag outranks Version
-    g_def.UpdateLink = "https://github.com/darkredbeard/arcdps-boon-magnifier";
+    g_def.UpdateLink = "https://github.com/mutinylaboratories/arcdps-boon-magnifier";
     return &g_def;
 }
