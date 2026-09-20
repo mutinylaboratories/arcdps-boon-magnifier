@@ -20,10 +20,13 @@ Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub 
 
 ## Infrastructure
 - [x] Self-hosted runner `ZUGZUG` (label `gw2`) installed in `C:\actions-runner`, started by
-      the logon task "GitHub Actions runner (gw2)"; fork-PR workflows need manual approval.
-      `resign.ps1` analyses the raw exe (10–20 min); could be taught to reuse a `.bnpr`.
-- [ ] Org-level *Actions → Fork pull request workflows* approval policy: set to "all external
-      contributors" too (needs `admin:org`; do it in the org settings UI).
+      the logon task "GitHub Actions runner (gw2)"; verified with a no-op `gw2-resign` run and
+      a local `resign.ps1 -Force` (raw exe analysis takes ~4 min, signature came out identical).
+- [x] Fork-PR workflow runs need manual approval at both repo and org level; workflow token
+      is read-only. **Before approving any fork PR's run, read its `.github/workflows` diff** —
+      an approved run executes the PR's workflow files, and could target the runner.
+- [ ] Runner only runs while logged on; if that ever matters, look at `BN_LICENSE` env var +
+      a service account instead of the logon task.
 - [ ] Delete the private `*-old` repos in the org once comfortable (needs `delete_repo`
       scope: `gh auth refresh -h github.com -s delete_repo`, or via repo settings).
 - [ ] Re-enter Actions secrets in the recreated `ska` (4) and `o2ptima_companion` (2) repos.
