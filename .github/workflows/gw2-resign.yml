@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency: gw2-resign
 
@@ -33,7 +34,7 @@ jobs:
         env:
           FORCE: ${{ inputs.force }}
         run: |
-          $r = & tools/ci/resign.ps1 -Force:([bool]::Parse("$env:FORCE" -eq "" ? "false" : "$env:FORCE"))
+          $r = & tools/ci/resign.ps1 -Force:("$env:FORCE" -eq "true")
           if ($LASTEXITCODE -ne 0) { throw "resign.ps1 failed" }
           "changed=$($r.Changed)" >> $env:GITHUB_OUTPUT
           "version=$($r.Version)" >> $env:GITHUB_OUTPUT
@@ -41,9 +42,16 @@ jobs:
         if: steps.resign.outputs.changed == 'true'
         shell: pwsh
         run: |
-          git config user.name "gw2-resign bot"
-          git config user.email "gw2-resign@users.noreply.github.com"
+          git config user.name "darkredbeard"
+          git config user.email "307222815+darkredbeard@users.noreply.github.com"
           git add signatures/ CMakeLists.txt
           git commit -m "Re-sign for GW2 build $(Get-Content signatures/gw2_build.txt)"
           git tag "v${{ steps.resign.outputs.version }}"
           git push origin HEAD:main --tags
+      # A tag pushed with GITHUB_TOKEN does not fire release.yml's push trigger, so start it by hand.
+      - name: Start the release build
+        if: steps.resign.outputs.changed == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref "v${{ steps.resign.outputs.version }}"

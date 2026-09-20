@@ -1,12 +1,14 @@
 # Tag a commit vX.Y.Z (matching the version in CMakeLists.txt) and this builds it, runs the
 # tests, and publishes a GitHub release with the DLL attached. Nexus' updater watches the
 # repo's releases: it downloads the first .dll asset of the newest tag that outranks the
-# installed addon's version.
+# installed addon's version. gw2-resign.yml dispatches this on the tag it creates (its
+# push, made with GITHUB_TOKEN, cannot trigger the push event).
 name: release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write

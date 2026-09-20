@@ -68,9 +68,16 @@ arcdps, nothing crashes). Two workflows keep it current:
   human with Binary Ninja (see `docs/gw2-buff-internals.md`).
 
 Setting up the self-hosted runner: GitHub → repo *Settings → Actions → Runners → New
-self-hosted runner* (Windows), follow the shown `config.cmd` steps, add the label `gw2`, and
-install it as a service so it runs while the PC is on. It needs `python -c "import
-binaryninja"` to work in the runner's environment.
+self-hosted runner* (Windows), follow the shown `config.cmd` steps and add the label `gw2`.
+Register it at the repository (not org) level so only this repo's workflows can reach it.
+Run it in the logged-on user's session rather than as a service: Binary Ninja's licence and
+`python -c "import binaryninja"` are per-user. A scheduled task at logon that launches
+`run.cmd` hidden does the job (`C:\actions-runner\start-runner.ps1` on the reference machine).
+
+Because the runner is a real PC, fork pull requests must never run on it unapproved: the repo
+sets *Actions → General → Fork pull request workflows → Require approval for all external
+contributors*, and the workflow `GITHUB_TOKEN` defaults to read-only. Review a PR's workflow
+changes before approving its run.
 
 ## Build
 

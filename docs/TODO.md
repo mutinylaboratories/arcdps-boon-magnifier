@@ -19,9 +19,11 @@ Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub 
 - [ ] Nexus update flow end to end: cut v0.1.1 and confirm Nexus offers/installs it.
 
 ## Infrastructure
-- [ ] Install the **self-hosted runner** (label `gw2`) on the gaming PC for
-      `.github/workflows/gw2-resign.yml`; then dry-run `tools/ci/resign.ps1 -Force` once.
-      Note it analyses the raw exe (10–20 min); could be taught to reuse a `.bnpr`.
+- [x] Self-hosted runner `ZUGZUG` (label `gw2`) installed in `C:\actions-runner`, started by
+      the logon task "GitHub Actions runner (gw2)"; fork-PR workflows need manual approval.
+      `resign.ps1` analyses the raw exe (10–20 min); could be taught to reuse a `.bnpr`.
+- [ ] Org-level *Actions → Fork pull request workflows* approval policy: set to "all external
+      contributors" too (needs `admin:org`; do it in the org settings UI).
 - [ ] Delete the private `*-old` repos in the org once comfortable (needs `delete_repo`
       scope: `gh auth refresh -h github.com -s delete_repo`, or via repo settings).
 - [ ] Re-enter Actions secrets in the recreated `ska` (4) and `o2ptima_companion` (2) repos.
