@@ -34,14 +34,17 @@ if ($exeTs -eq $signedTs -and -not $Force) {
     return [pscustomobject]@{ Changed = $false; Version = '' }
 }
 
-# Regenerate straight from the exe (full analysis; ~10-20 minutes on a 43 MB client).
+# Regenerate straight from the exe (full analysis; about 4 minutes on a 43 MB client).
 $tmp = Join-Path $env:TEMP 'arcdps_boon_magnifier_sigs.new.ini'
 python (Join-Path $root 'tools\binja\make_sigs.py') $GameExe $tmp --targets (Join-Path $root 'tools\binja\targets_gw2.py') --enable
 if ($LASTEXITCODE -ne 0) { throw 'make_sigs.py failed: a locator or signature no longer resolves. Reverse-engineer the change (docs/gw2-buff-internals.md) and update tools/binja/targets_gw2.py.' }
 Copy-Item $tmp $sigs -Force
 
 # Record the CDN build id (best effort) and bump the patch version.
-try { (Invoke-RestMethod -Uri 'http://assetcdn.101.arenanetworks.com/latest64/101' -TimeoutSec 30).Split(' ')[0].Trim() | Set-Content $buildFile } catch { Write-Warning "CDN build lookup failed: $_" }
+try {
+    $build = (Invoke-RestMethod -Uri 'http://assetcdn.101.arenanetworks.com/latest64/101' -TimeoutSec 30).Split(' ')[0].Trim()
+    [IO.File]::WriteAllText($buildFile, "$build`n")   # LF, matching the committed file
+} catch { Write-Warning "CDN build lookup failed: $_" }
 
 $cm = Join-Path $root 'CMakeLists.txt'
 $text = Get-Content $cm -Raw

@@ -1,4 +1,4 @@
-"""Locators for the Stability polling source (see docs/gw2-buff-internals.md).
+r"""Locators for the Stability polling source (see docs/gw2-buff-internals.md).
 
     python make_sigs.py "C:\Program Files\Guild Wars 2\Gw2-64.exe" out.ini --targets targets_gw2.py --enable
 
