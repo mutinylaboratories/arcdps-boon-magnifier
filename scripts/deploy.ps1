@@ -14,11 +14,10 @@ if (-not (Test-Path $AddonsDir)) { throw "Addons folder not found: $AddonsDir" }
 if (Get-Process -Name 'Gw2-64' -ErrorAction SilentlyContinue) { throw 'Guild Wars 2 is running; close it before deploying.' }
 
 Copy-Item $dll (Join-Path $AddonsDir 'arcdps_boon_magnifier.dll') -Force
-# Optional realtime-source signature file (made by tools\binja\make_sigs.py); deployed when present.
-$sigs = Join-Path $root "build\$Config\arcdps_boon_magnifier_sigs.ini"
-if (Test-Path $sigs) {
-    Copy-Item $sigs (Join-Path $AddonsDir 'arcdps_boon_magnifier_sigs.ini') -Force
-    Write-Host "Deployed DLL + signature file to $AddonsDir"
-} else {
-    Write-Host "Deployed DLL to $AddonsDir (no signature file: realtime source stays off)"
-}
+# The signature file is embedded in the DLL; the copy beside it is what the plugin re-reads
+# live (gw2-resign refreshes it), so keep it in step with the repo.
+$sigs = Join-Path $root 'signatures\arcdps_boon_magnifier_sigs.ini'
+$live = Join-Path $AddonsDir 'arcdps_boon_magnifier_sigs.ini'
+Copy-Item $sigs "$live.new" -Force
+Move-Item "$live.new" $live -Force
+Write-Host "Deployed DLL + signature file to $AddonsDir"
