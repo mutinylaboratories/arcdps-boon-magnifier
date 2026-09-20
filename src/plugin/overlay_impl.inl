@@ -6,8 +6,26 @@
 static bool g_preview = false;
 static bool g_reset_pos = false;
 
+// Screen rectangle of each overlay's close button, kept from the previous frame so the
+// window can accept input there even while it is otherwise click-through.
+struct CloseRect { ImVec2 min, max; bool valid = false; };
+static std::map<uint32_t, CloseRect> g_close_rects;
+
 static ImU32 rgba(int r, int g, int b, float a) {
     return IM_COL32(r, g, b, (int)(std::clamp(a, 0.0f, 1.0f) * 255.0f + 0.5f));
+}
+
+// The x on an overlay: untick that boon; if it was the only one, switch the overlay off
+// instead (the list always keeps one entry). Both are undone in the options.
+static void hide_boon_overlay(uint32_t boon_id) {
+    if (g_cfg.boons.size() <= 1) {
+        g_cfg.enabled = false;
+    } else {
+        g_cfg.boons.erase(std::remove(g_cfg.boons.begin(), g_cfg.boons.end(), boon_id), g_cfg.boons.end());
+        set_tracked_boons(g_cfg.boons);
+    }
+    g_close_rects[boon_id].valid = false;
+    config_mark_dirty();
 }
 
 // Boon icon silhouette: a square with a peaked top. Coordinates are in icon units (0..1).
@@ -169,12 +187,18 @@ static void draw_one_overlay(uint32_t boon_id, size_t index, ImFont* font) {
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f + (float)index * (S + 24.0f), io.DisplaySize.y * 0.62f),
                             g_reset_pos ? ImGuiCond_Always : ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
+    // The close button (top-right of the icon) must stay clickable while the overlay is
+    // locked, so the window only goes click-through when the mouse is not over the button's
+    // rectangle from the previous frame.
+    CloseRect& close = g_close_rects[boon_id];
+    const bool over_close = close.valid && ImGui::IsMouseHoveringRect(close.min, close.max, false);
+
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground |
                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
                              ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
                              ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
                              ImGuiWindowFlags_NoBringToFrontOnFocus;
-    if (g_cfg.locked) flags |= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs;
+    if (g_cfg.locked) flags |= ImGuiWindowFlags_NoMove | (over_close ? 0 : ImGuiWindowFlags_NoInputs);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -261,13 +285,39 @@ static void draw_one_overlay(uint32_t boon_id, size_t index, ImFont* font) {
             }
         }
 
+        // Close button: a small x on the icon's top-right corner, shown while the mouse is
+        // over the overlay. Hides this boon's overlay (re-enable it in the options).
+        {
+            const float r = std::clamp(S * 0.09f, 7.0f, 12.0f);
+            const ImVec2 c(icon.x + S - r * 0.6f, icon.y + r * 0.6f);
+            close.min = ImVec2(c.x - r, c.y - r);
+            close.max = ImVec2(c.x + r, c.y + r);
+            close.valid = true;
+            const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
+            const bool over_window = ImGui::IsMouseHoveringRect(wp, ImVec2(wp.x + ws.x, wp.y + ws.y), false);
+            if (over_window || over_close) {
+                const bool hot = ImGui::IsMouseHoveringRect(close.min, close.max, false);
+                dl->PushClipRectFullScreen();
+                dl->AddCircleFilled(c, r, hot ? rgba(200, 50, 40, 0.95f) : rgba(20, 20, 20, 0.8f), 16);
+                dl->AddCircle(c, r, rgba(255, 255, 255, 0.8f), 16, 1.0f);
+                const float k = r * 0.45f;
+                dl->AddLine(ImVec2(c.x - k, c.y - k), ImVec2(c.x + k, c.y + k), rgba(255, 255, 255, 0.95f), 1.5f);
+                dl->AddLine(ImVec2(c.x + k, c.y - k), ImVec2(c.x - k, c.y + k), rgba(255, 255, 255, 0.95f), 1.5f);
+                dl->PopClipRect();
+                if (hot) {
+                    ImGui::SetTooltip("Hide this overlay (turn it back on in the Boon Magnifier options)");
+                    if (ImGui::IsMouseClicked(0)) hide_boon_overlay(boon_id);
+                }
+            }
+        }
+
         if (!g_cfg.locked) {
             // Show the drag handle area while the overlay is movable.
             ImVec2 a = ImGui::GetWindowPos(), sz = ImGui::GetWindowSize();
             dl->PushClipRectFullScreen();
             dl->AddRect(a, ImVec2(a.x + sz.x, a.y + sz.y), rgba(255, 255, 255, 0.35f), 3.0f);
             dl->PopClipRect();
-            if (ImGui::IsWindowHovered())
+            if (ImGui::IsWindowHovered() && !over_close)
                 ImGui::SetTooltip("Drag to move. Lock it in the Boon Magnifier options.");
         }
     }

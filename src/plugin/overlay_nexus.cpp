@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <map>
 #include <vector>
 #include "icon_texture.hpp"
 #include "imgui.h"

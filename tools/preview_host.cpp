@@ -93,8 +93,11 @@ static bool save_backbuffer_bmp(const char* path) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { std::printf("usage: preview_host <plugin.dll> [--screenshot out.bmp]\n"); return 2; }
+    if (argc < 2) { std::printf("usage: preview_host <plugin.dll> [--screenshot out.bmp [--mouse x y]]\n"); return 2; }
     const char* shot = (argc >= 4 && !strcmp(argv[2], "--screenshot")) ? argv[3] : nullptr;
+    // Optional synthetic mouse position (client pixels) so a screenshot can show hover states.
+    const bool fake_mouse = shot && argc >= 7 && !strcmp(argv[4], "--mouse");
+    const float mouse_x = fake_mouse ? (float)atof(argv[5]) : 0.0f, mouse_y = fake_mouse ? (float)atof(argv[6]) : 0.0f;
 
     WNDCLASSEXA wc{sizeof(wc), CS_CLASSDC, wnd_proc, 0, 0, GetModuleHandle(nullptr)};
     wc.lpszClassName = "BoonMagnifierPreview";
@@ -174,6 +177,7 @@ int main(int argc, char** argv) {
 
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
+        if (fake_mouse) ImGui::GetIO().AddMousePosEvent(mouse_x, mouse_y);
         ImGui::NewFrame();
         imgui_cb(1, 0);
         ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
