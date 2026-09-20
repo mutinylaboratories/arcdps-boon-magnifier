@@ -2,7 +2,9 @@
 
 State as of 2026-09-19. Working in game: realtime Stability overlay (appears/disappears
 instantly, countdown from game data), Hallowed Ground projection from the first pulse,
-Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub releases.
+Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub releases,
+provisional signatures across a patch + live reload of the signature file (self-hosted
+runner re-signs and drops it into `addons\`).
 
 ## Needs an in-game check
 - [ ] **Squad window** (`show_squad`): never run in a squad yet. Watch `Nexus.log` for
@@ -27,9 +29,11 @@ Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub 
       an approved run executes the PR's workflow files, and could target the runner.
 - [ ] Runner only runs while logged on; if that ever matters, look at `BN_LICENSE` env var +
       a service account instead of the logon task.
+- [x] Live signature reload verified in game (2026-09-19): swapping the ini beside the DLL
+      flipped the status to `enabled=0` and back within ~1 s each way, no restart.
 - [ ] After the next real GW2 patch: check Diagnostics shows `PROVISIONAL` and the overlay
       still works before the re-sign lands; then that the re-signed ini deployed by the runner
-      clears the flag without a restart. If provisional ever misbehaves, the fallback is a
+      clears the flag on its own. If provisional ever misbehaves, the fallback is a
       pointer-chain self-test in the poller before reporting anything.
 - [ ] Delete the private `*-old` repos in the org once comfortable (needs `delete_repo`
       scope: `gh auth refresh -h github.com -s delete_repo`, or via repo settings).
