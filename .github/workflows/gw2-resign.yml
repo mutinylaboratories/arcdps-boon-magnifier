@@ -34,9 +34,8 @@ jobs:
         env:
           FORCE: ${{ inputs.force }}
         run: |
-          $r = & tools/ci/resign.ps1 -Force:("$env:FORCE" -eq "true")
-          if ($LASTEXITCODE -ne 0) { throw "resign.ps1 failed" }
-          "changed=$($r.Changed)" >> $env:GITHUB_OUTPUT
+          $r = & tools/ci/resign.ps1 -Force:("$env:FORCE" -eq "true")   # throws on failure
+          "changed=$($r.Changed.ToString().ToLower())" >> $env:GITHUB_OUTPUT
           "version=$($r.Version)" >> $env:GITHUB_OUTPUT
       - name: Commit, tag, push
         if: steps.resign.outputs.changed == 'true'
