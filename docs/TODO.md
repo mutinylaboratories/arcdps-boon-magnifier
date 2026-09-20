@@ -4,7 +4,8 @@ State as of 2026-09-19. Working in game: realtime Stability overlay (appears/dis
 instantly, countdown from game data), Hallowed Ground projection from the first pulse,
 Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub releases,
 provisional signatures across a patch + live reload of the signature file (self-hosted
-runner re-signs and drops it into `addons\`).
+runner re-signs and drops it into `addons\`), close button on each overlay (verified in
+game 2026-09-19).
 
 ## Needs an in-game check
 - [ ] **Squad window** (`show_squad`): never run in a squad yet. Watch `Nexus.log` for
