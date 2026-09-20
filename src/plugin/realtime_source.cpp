@@ -82,11 +82,24 @@ uintptr_t realtime_resolved(const char* sig_name) {
     return 0;
 }
 
-void realtime_source_init(const HookApi* hooks) {
-    std::lock_guard<std::mutex> lock(g_mtx);
-    if (g_initialised) return;
-    g_initialised = true;
-    if (hooks) g_hooks = *hooks;
+namespace {
+
+// Last-write time of the signature file beside the DLL, 0 when there is none.
+uint64_t sigfile_mtime() {
+    WIN32_FILE_ATTRIBUTE_DATA fad{};
+    if (!GetFileAttributesExA(sig_path_next_to_dll().c_str(), GetFileExInfoStandard, &fad)) return 0;
+    return ((uint64_t)fad.ftLastWriteTime.dwHighDateTime << 32) | fad.ftLastWriteTime.dwLowDateTime;
+}
+
+uint64_t g_sigfile_mtime = 0;        // what load_locked() last saw
+ULONGLONG g_next_mtime_check = 0;
+
+// (Re)loads the signature file, resolves it against the running exe and installs the hooks.
+// Tears down whatever was installed before, so a reload swaps cleanly or ends disabled.
+void load_locked() {
+    uninstall_locked();
+    g_resolved.clear();
+    g_sigfile_mtime = sigfile_mtime();
 
     // A signature file beside the DLL overrides the one compiled in (signatures/ in the repo).
     std::string text, origin;
@@ -108,21 +121,26 @@ void realtime_source_init(const HookApi* hooks) {
 
     core::SigFile file;
     std::string err;
-    if (!core::parse_sigfile(text, file, err)) { g_status = "disabled: signature file " + err; return; }
+    if (!core::parse_sigfile(text, file, err)) {
+        g_status = "disabled: signature file " + err;
+        g_sigfile_mtime = 0;   // may be half-written; the mtime check will try again
+        return;
+    }
     if (!file.enabled) { g_status = "disabled: enabled=0 in signature file"; return; }
 
     ImageInfo img;
     if (!describe_main_image(img)) { g_status = "disabled: could not read the game's PE headers"; return; }
-    if (file.pe_timestamp && file.pe_timestamp != img.timestamp) {
-        char buf[128];
-        std::snprintf(buf, sizeof(buf), "disabled: signatures are for exe timestamp 0x%08X, running 0x%08X (game updated? regenerate)",
-                      file.pe_timestamp, img.timestamp);
-        g_status = buf;
-        return;
-    }
-    if (file.pe_size_of_image && file.pe_size_of_image != img.size) {
-        g_status = "disabled: exe SizeOfImage differs from the signature file (game updated? regenerate)";
-        return;
+
+    // The patterns are wildcarded and usually outlive a game patch, so a build mismatch is
+    // not fatal: scan anyway and say so. resolve() still demands exactly one match, and the
+    // poller validates every pointer it follows, so a pattern that moved onto the wrong code
+    // ends in "disabled"/"unreadable", not a crash.
+    std::string provisional;
+    if ((file.pe_timestamp && file.pe_timestamp != img.timestamp) ||
+        (file.pe_size_of_image && file.pe_size_of_image != img.size)) {
+        char buf[96];
+        std::snprintf(buf, sizeof(buf), ", PROVISIONAL: made for exe 0x%08X, running 0x%08X", file.pe_timestamp, img.timestamp);
+        provisional = buf;
     }
 
     // Resolve everything first; one failure aborts the whole thing so state is never half-hooked.
@@ -133,7 +151,11 @@ void realtime_source_init(const HookApi* hooks) {
         const char* why = r == core::ResolveResult::NotFound ? "not found" :
                           r == core::ResolveResult::Ambiguous ? "matches more than once" :
                           r == core::ResolveResult::OutOfRange ? "resolves outside the image" : nullptr;
-        if (why) { g_status = "disabled: signature [" + sig.name + "] " + why; return; }
+        if (why) {
+            g_status = "disabled: signature [" + sig.name + "] " + why +
+                       (provisional.empty() ? "" : " (game updated: signatures need regenerating)");
+            return;
+        }
         resolved.push_back({sig.name, (uintptr_t)img.base + off});
     }
     g_resolved = std::move(resolved);
@@ -158,10 +180,39 @@ void realtime_source_init(const HookApi* hooks) {
     }
     if (b.poll) realtime_set_stale_after(1000);   // a poller that stops reporting is dropped after 1s
     g_status = "active: " + std::to_string(g_resolved.size()) + " signature(s) (" + origin + "), " +
-               std::to_string(g_installed.size()) + " hook(s)" + (b.poll ? ", polling" : "");
+               std::to_string(g_installed.size()) + " hook(s)" + (b.poll ? ", polling" : "") + provisional;
+}
+
+}  // namespace
+
+void realtime_source_init(const HookApi* hooks) {
+    std::lock_guard<std::mutex> lock(g_mtx);
+    if (g_initialised) return;
+    g_initialised = true;
+    if (hooks) g_hooks = *hooks;
+    load_locked();
+}
+
+void realtime_source_reload() {
+    std::lock_guard<std::mutex> lock(g_mtx);
+    if (!g_initialised) return;
+    load_locked();
+    realtime_disconnect();   // forget anything reported through the old resolution
 }
 
 void realtime_source_poll() {
+    // A regenerated signature file dropped beside the DLL (e.g. by the gw2-resign job on
+    // this PC) takes effect without restarting: check its timestamp about once a second.
+    const ULONGLONG now = GetTickCount64();
+    if (now >= g_next_mtime_check) {
+        g_next_mtime_check = now + 1000;
+        bool changed = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mtx);
+            changed = g_initialised && sigfile_mtime() != g_sigfile_mtime;
+        }
+        if (changed) realtime_source_reload();
+    }
     const Gw2Bindings& b = gw2_bindings();
     if (!b.poll) return;
     {

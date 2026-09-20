@@ -8,6 +8,10 @@ param(
     [string]$GameExe = 'C:\Program Files\Guild Wars 2\Gw2-64.exe',
     [switch]$Force
 )
+# The plugin re-reads the signature file beside its DLL when the file changes, so a copy is
+# dropped into the game's addons folder too (only where the plugin is installed): the running
+# game picks it up within a second, no restart, no wait for the release.
+$AddonsDir = Join-Path (Split-Path $GameExe) 'addons'
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $sigs = Join-Path $root 'signatures\arcdps_boon_magnifier_sigs.ini'
@@ -39,6 +43,14 @@ $tmp = Join-Path $env:TEMP 'arcdps_boon_magnifier_sigs.new.ini'
 python (Join-Path $root 'tools\binja\make_sigs.py') $GameExe $tmp --targets (Join-Path $root 'tools\binja\targets_gw2.py') --enable
 if ($LASTEXITCODE -ne 0) { throw 'make_sigs.py failed: a locator or signature no longer resolves. Reverse-engineer the change (docs/gw2-buff-internals.md) and update tools/binja/targets_gw2.py.' }
 Copy-Item $tmp $sigs -Force
+
+if (Test-Path (Join-Path $AddonsDir 'arcdps_boon_magnifier.dll')) {
+    # Write beside, then rename: the plugin never sees a half-written file.
+    $live = Join-Path $AddonsDir 'arcdps_boon_magnifier_sigs.ini'
+    Copy-Item $tmp "$live.new" -Force
+    Move-Item "$live.new" $live -Force
+    Write-Host "Deployed the new signature to $AddonsDir"
+}
 
 # Record the CDN build id (best effort) and bump the patch version.
 try {

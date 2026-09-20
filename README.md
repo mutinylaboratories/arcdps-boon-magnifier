@@ -56,14 +56,18 @@ outranks the installed version. Releases are produced by CI:
 
 ### After a Guild Wars 2 patch
 
-The plugin checks the exe's build stamp and refuses a stale signature (overlay falls back to
-arcdps, nothing crashes). Two workflows keep it current:
+The patterns are wildcarded and usually survive a patch, so the plugin scans the new exe
+anyway and reports the result as *PROVISIONAL* in Diagnostics; only if a pattern no longer
+matches does the overlay fall back to arcdps (nothing crashes). It also re-reads
+`arcdps_boon_magnifier_sigs.ini` beside the DLL whenever the file changes, so a regenerated
+signature takes effect without restarting the game. Two workflows keep it current:
 
 - `gw2-watch` (GitHub-hosted, every 30 min) polls ArenaNet's CDN build id and opens an
   issue labelled `gw2-update` when it changes.
 - `gw2-resign` (self-hosted runner tagged `gw2`, hourly) runs on a machine with the patched
-  game and Binary Ninja: `tools/ci/resign.ps1` regenerates the signature, bumps the patch
-  version, commits and tags, and `release` takes it from there. If a locator no longer
+  game and Binary Ninja: `tools/ci/resign.ps1` regenerates the signature, drops it into that
+  machine's `addons\` folder (live within a second), bumps the patch version, commits and
+  tags, and `release` takes it from there for everyone else. If a locator no longer
   finds its function, the job fails and the issue stays open: that is the case that needs a
   human with Binary Ninja (see `docs/gw2-buff-internals.md`).
 

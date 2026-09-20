@@ -27,6 +27,10 @@ Stand Your Ground countdown, multi-boon overlays, Nexus auto-update from GitHub 
       an approved run executes the PR's workflow files, and could target the runner.
 - [ ] Runner only runs while logged on; if that ever matters, look at `BN_LICENSE` env var +
       a service account instead of the logon task.
+- [ ] After the next real GW2 patch: check Diagnostics shows `PROVISIONAL` and the overlay
+      still works before the re-sign lands; then that the re-signed ini deployed by the runner
+      clears the flag without a restart. If provisional ever misbehaves, the fallback is a
+      pointer-chain self-test in the poller before reporting anything.
 - [ ] Delete the private `*-old` repos in the org once comfortable (needs `delete_repo`
       scope: `gh auth refresh -h github.com -s delete_repo`, or via repo settings).
 - [ ] Re-enter Actions secrets in the recreated `ska` (4) and `o2ptima_companion` (2) repos.

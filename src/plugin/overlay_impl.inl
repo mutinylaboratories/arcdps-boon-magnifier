@@ -439,6 +439,8 @@ void draw_options() {
         ImGui::TextWrapped("Poll: %s", realtime_poll_status().c_str());
         if (!realtime_debug_status().empty()) ImGui::TextWrapped("Skill bar: %s", realtime_debug_status().c_str());
         if (ImGui::Button("Reset stats")) latency_reset();
+        ImGui::SameLine();
+        if (ImGui::Button("Reload signatures")) realtime_source_reload();
         bool logging = event_log_enabled();
         if (ImGui::Checkbox("Log tracked boon events to file", &logging)) event_log_enable(logging);
         if (logging) ImGui::TextDisabled("arcdps_boon_magnifier_events.log, next to the DLL");

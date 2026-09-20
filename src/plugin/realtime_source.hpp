@@ -6,9 +6,12 @@
 
 // Realtime buff source: resolves signatures from arcdps_boon_magnifier_sigs.ini
 // against the running game exe and installs the hooks declared in realtime_gw2.cpp.
-// Fail-safe by design: no file, enabled=0, a build mismatch, or any signature that
-// doesn't resolve to exactly one place means nothing is installed and the overlay
-// keeps using arcdps alone. Status is shown in the Diagnostics panel.
+// Fail-safe by design: no file, enabled=0, or any signature that doesn't resolve to
+// exactly one place means nothing is installed and the overlay keeps using arcdps
+// alone. A build mismatch is tolerated (the patterns are wildcarded and usually
+// survive a patch) and flagged PROVISIONAL in the status. The file beside the DLL is
+// re-read whenever its timestamp changes, so a regenerated signature takes effect
+// without a restart. Status is shown in the Diagnostics panel.
 namespace plugin {
 
 // Nexus' bundled MinHook (AddonAPI_t::MinHook_*). Null when running under arcdps alone.
@@ -36,7 +39,8 @@ struct Gw2Bindings {
 const Gw2Bindings& gw2_bindings();
 
 void        realtime_source_init(const HookApi* hooks);   // safe to call once per host load
-void        realtime_source_poll();                       // render thread, once per frame
+void        realtime_source_reload();                     // re-read the signature file, re-resolve, re-hook
+void        realtime_source_poll();                       // render thread, once per frame (also watches the file)
 void        realtime_source_shutdown();
 std::string realtime_source_status();                     // one-line human summary
 // Set by the poll function each frame: which step of its pointer chain it reached.

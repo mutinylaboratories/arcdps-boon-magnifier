@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include "Nexus.h"
 #include "arcdps_defs.hpp"
 #include "imgui.h"
@@ -172,11 +173,33 @@ int main(int argc, char** argv) {
     REQUIRE(nexus_frame() > nexus_idle);       // arcdps' direct feed shows up in the Nexus-drawn overlay
     ((uintptr_t (*)())get_release())();
 
-    // ---- Phase 3: arcdps gone again; Nexus carries on, then unloads ----
+    // ---- Phase 3: arcdps gone again; Nexus carries on ----
     nexus_event(remove_all);
     REQUIRE(nexus_frame() == nexus_idle);
     nexus_event(stab_event(9, 4000));
     REQUIRE(nexus_frame() > nexus_idle);
+
+    // ---- Phase 4: a signature file dropped beside the DLL is picked up without a reload ----
+    // (In this process the "game exe" is the smoke host, so the built-in signature cannot
+    // resolve; the status text is what we watch.)
+    auto status = (const char* (*)())GetProcAddress(dll, "boon_magnifier_status");
+    REQUIRE(status);
+    std::string sig_path = argv[1];
+    sig_path = sig_path.substr(0, sig_path.find_last_of("\\/") + 1) + "arcdps_boon_magnifier_sigs.ini";
+    std::remove(sig_path.c_str());
+    std::printf("signatures at load: %s\n", status());
+    REQUIRE(std::string(status()).find("enabled=0") == std::string::npos);
+    { std::FILE* f = std::fopen(sig_path.c_str(), "wb"); REQUIRE(f); std::fputs("enabled=0\n", f); std::fclose(f); }
+    Sleep(1100);                    // the file is checked about once a second, from the render callback
+    nexus_frame();
+    std::printf("signatures after drop: %s\n", status());
+    REQUIRE(std::string(status()).find("enabled=0") != std::string::npos);
+    std::remove(sig_path.c_str());
+    Sleep(1100);
+    nexus_frame();
+    std::printf("signatures after removal: %s\n", status());
+    REQUIRE(std::string(status()).find("enabled=0") == std::string::npos);   // back to the built-in one
+
     def->Unload();
     REQUIRE(!g_nexus_render && !g_nexus_options && !g_nexus_combat);
 #endif
