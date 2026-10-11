@@ -38,18 +38,29 @@ jobs:
           "changed=$($r.Changed.ToString().ToLower())" >> $env:GITHUB_OUTPUT
           "version=$($r.Version)" >> $env:GITHUB_OUTPUT
       - name: Commit, tag, push
+        id: push
         if: steps.resign.outputs.changed == 'true'
         shell: pwsh
         run: |
+          # A run queued while the PC was asleep can wake after an earlier one already pushed this
+          # very signature; then there is nothing to do (and the tag would collide).
+          git fetch -q origin main
+          git diff --quiet origin/main -- signatures/arcdps_boon_magnifier_sigs.ini
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "origin/main already carries this signature; nothing to push."
+            "pushed=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
           git config user.name "darkredbeard"
           git config user.email "307222815+darkredbeard@users.noreply.github.com"
           git add signatures/ CMakeLists.txt
           git commit -m "Re-sign for GW2 build $(Get-Content signatures/gw2_build.txt)"
           git tag "v${{ steps.resign.outputs.version }}"
           git push origin HEAD:main --tags
+          "pushed=true" >> $env:GITHUB_OUTPUT
       # A tag pushed with GITHUB_TOKEN does not fire release.yml's push trigger, so start it by hand.
       - name: Start the release build
-        if: steps.resign.outputs.changed == 'true'
+        if: steps.push.outputs.pushed == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

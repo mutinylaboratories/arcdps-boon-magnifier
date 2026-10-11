@@ -21,4 +21,13 @@ struct RealtimeState {
 BoonSnapshot merge_realtime(const BoonSnapshot& arcdps, const RealtimeState& rt, uint64_t now_ms,
                             uint64_t stale_after_ms);
 
+// The game stores "permanent" as a 0xFFFFFFFF ms duration (its tooltip shows it as ~49 days).
+// Anything this long or longer is treated as permanent by the overlay (drawn as an infinity).
+constexpr int64_t kPermanentMs = 7LL * 24 * 3600 * 1000;
+
+// Time left on one stack from the game's 32-bit timeGetTime() clock: started_ms + duration_ms
+// - now_ms, wrap-safe, never negative, and a permanent duration stays permanent regardless of
+// how long ago it started (it would otherwise read as expired after 24.8 days of uptime).
+int64_t stack_remaining_ms(uint32_t started_ms, uint32_t duration_ms, uint32_t now_ms);
+
 }  // namespace core

@@ -19,7 +19,9 @@ game 2026-09-19).
 - [ ] **Provisional Hallowed Ground projection**: gate is "HG on bar and not recharging";
       any other self-cast 2–6 s single stab stack would show ~10 s for up to 1.25 s. If seen,
       also require `buff->sourceAgent == own agent` (needs the agent pointer above).
-- [ ] Nexus update flow end to end: cut v0.1.1 and confirm Nexus offers/installs it.
+- [x] Nexus update flow: v0.1.1 was cut by gw2-resign after the Oct 4 patch and Nexus installed it.
+- [ ] Permanent boons (game duration 0xFFFFFFFF, e.g. the WvW Aegis) now draw an infinity sign;
+      confirm in game that the Aegis overlay shows it and the queued stack count still updates.
 
 ## Infrastructure
 - [x] Self-hosted runner `ZUGZUG` (label `gw2`) installed in `C:\actions-runner`, started by

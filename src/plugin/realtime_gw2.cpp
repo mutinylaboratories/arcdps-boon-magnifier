@@ -30,6 +30,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include "realtime_merge.hpp"   // stack_remaining_ms
 #include "pulse_projector.hpp"
 #include "realtime_source.hpp"
 #include "state.hpp"
@@ -454,8 +455,8 @@ void poll_self_boons() {
                 it->second.first_seen_ms = now;
             }
         }
-        const uint64_t started = active ? (uint64_t)start : it->second.first_seen_ms;
-        const int64_t left = std::max<int64_t>(0, (int64_t)(int32_t)((uint32_t)started + it->second.duration_ms - now));
+        const uint32_t started = active ? start : it->second.first_seen_ms;
+        const int64_t left = core::stack_remaining_ms(started, it->second.duration_ms, now);   // permanent-aware
         if (a->def && a->def->stacking == core::Stacking::Duration) {
             // Duration-stacked boons really do queue: only the flagged-active stack ticks and
             // the others wait with their full duration.

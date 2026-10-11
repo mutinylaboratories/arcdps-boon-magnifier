@@ -27,4 +27,10 @@ BoonSnapshot merge_realtime(const BoonSnapshot& arcdps, const RealtimeState& rt,
     return out;
 }
 
+int64_t stack_remaining_ms(uint32_t started_ms, uint32_t duration_ms, uint32_t now_ms) {
+    if ((int64_t)duration_ms >= kPermanentMs) return duration_ms;   // permanent: never counts down
+    const uint32_t elapsed = now_ms - started_ms;                    // wraps correctly across the 49-day boundary
+    return std::max<int64_t>(0, (int64_t)duration_ms - (int64_t)elapsed);
+}
+
 }  // namespace core

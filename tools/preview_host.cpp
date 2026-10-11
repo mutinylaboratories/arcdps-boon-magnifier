@@ -98,6 +98,11 @@ int main(int argc, char** argv) {
     // Optional synthetic mouse position (client pixels) so a screenshot can show hover states.
     const bool fake_mouse = shot && argc >= 7 && !strcmp(argv[4], "--mouse");
     const float mouse_x = fake_mouse ? (float)atof(argv[5]) : 0.0f, mouse_y = fake_mouse ? (float)atof(argv[6]) : 0.0f;
+    // --duration ms: length of the first applied stack in screenshot mode (e.g. 2147483647 shows the
+    // permanent-boon rendering, 3600000 the hours form).
+    int32_t first_ms = shot ? 7400 : 8000;
+    for (int i = 2; i + 1 < argc; ++i)
+        if (!strcmp(argv[i], "--duration")) first_ms = (int32_t)atol(argv[i + 1]);
 
     WNDCLASSEXA wc{sizeof(wc), CS_CLASSDC, wnd_proc, 0, 0, GetModuleHandle(nullptr)};
     wc.lpszClassName = "BoonMagnifierPreview";
@@ -171,7 +176,7 @@ int main(int argc, char** argv) {
         }
         // Every 10s: three stacks of different lengths, like a real stab rotation.
         if (GetTickCount64() >= next_cast) {
-            apply(shot ? 7400 : 8000); apply(5000); apply(3000);
+            apply(first_ms); apply(5000); apply(3000);
             next_cast = GetTickCount64() + 10000;
         }
 

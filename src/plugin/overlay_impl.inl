@@ -100,10 +100,22 @@ static const unsigned char kSegments[10] = {
     0b0111111, 0b0000110, 0b1011011, 0b1001111, 0b1100110,
     0b1101101, 0b1111101, 0b0000111, 0b1111111, 0b1101111};
 
+// 'h' (hours suffix) and '~' (drawn as an infinity sign, for permanent boons) are the only
+// non-digits the countdown uses.
+static const unsigned char kSegH = 0b1110100;   // c e f g
+
 static float seg_digit_w(float h) { return h * 0.52f; }
 static float seg_thick(float h)   { return h * 0.15f; }
 static float seg_advance(float h, char c) {
-    return (c == '.' ? seg_thick(h) * 1.2f : seg_digit_w(h)) + seg_thick(h) * 1.5f;
+    const float w = c == '.' ? seg_thick(h) * 1.2f : c == '~' ? h * 0.95f : seg_digit_w(h);
+    return w + seg_thick(h) * 1.5f;
+}
+
+static void draw_infinity(ImDrawList* dl, ImVec2 pos, float h, ImU32 col, float grow) {
+    const float r = h * 0.21f, t = seg_thick(h) * 0.8f + grow * 2.0f;
+    const ImVec2 c(pos.x + h * 0.475f, pos.y + h * 0.5f);
+    dl->AddCircle(ImVec2(c.x - r * 1.05f, c.y), r, col, 24, t);
+    dl->AddCircle(ImVec2(c.x + r * 1.05f, c.y), r, col, 24, t);
 }
 
 static ImVec2 seg_measure(float h, const char* text) {
@@ -119,12 +131,15 @@ static void seg_pass(ImDrawList* dl, ImVec2 pos, float h, const char* text, ImU3
     for (const char* c = text; *c; ++c) {
         if (*c == '.') {
             dl->AddCircleFilled(ImVec2(x + t * 0.6f, y + h - t * 0.1f), t * 0.75f + grow, col, 16);
-        } else if (*c >= '0' && *c <= '9') {
+        } else if (*c == '~') {
+            draw_infinity(dl, ImVec2(x, y), h, col, grow);
+        } else if ((*c >= '0' && *c <= '9') || *c == 'h') {
             const ImVec2 tl(x, y), tr(x + w, y), ml(x, y + h * 0.5f), mr(x + w, y + h * 0.5f),
                          bl(x, y + h), br(x + w, y + h);
             const ImVec2 seg[7][2] = {{tl, tr}, {tr, mr}, {mr, br}, {bl, br}, {ml, bl}, {tl, ml}, {ml, mr}};
+            const unsigned char mask = *c == 'h' ? kSegH : kSegments[*c - '0'];
             for (int i = 0; i < 7; ++i) {
-                if (!(kSegments[*c - '0'] & (1 << i))) continue;
+                if (!(mask & (1 << i))) continue;
                 dl->AddLine(seg[i][0], seg[i][1], col, t + grow * 2.0f);
                 dl->AddCircleFilled(seg[i][0], t * 0.5f + grow, col, 12);   // round caps
                 dl->AddCircleFilled(seg[i][1], t * 0.5f + grow, col, 12);
@@ -136,13 +151,13 @@ static void seg_pass(ImDrawList* dl, ImVec2 pos, float h, const char* text, ImU3
 
 // px is the nominal font size for both styles, so switching styles keeps the layout.
 static ImVec2 measure_number(ImFont* font, float px, const char* text) {
-    if (g_cfg.digit_style == core::DIGITS_FONT) return font->CalcTextSizeA(px, FLT_MAX, 0.0f, text);
+    if (g_cfg.digit_style == core::DIGITS_FONT && std::strcmp(text, "~") != 0) return font->CalcTextSizeA(px, FLT_MAX, 0.0f, text);
     return seg_measure(px * 0.72f, text);
 }
 
 static void draw_number(ImDrawList* dl, ImFont* font, float px, ImVec2 pos, ImU32 col, float alpha,
                         const char* text) {
-    if (g_cfg.digit_style == core::DIGITS_FONT) {
+    if (g_cfg.digit_style == core::DIGITS_FONT && std::strcmp(text, "~") != 0) {   // no infinity glyph in the host font
         draw_text_outlined(dl, font, px, pos, col, alpha, text);
         return;
     }
@@ -253,7 +268,11 @@ static void draw_one_overlay(uint32_t boon_id, size_t index, ImFont* font) {
             char buf[16];
             if (snap.remaining_known) {
             float secs = (float)snap.remaining_ms / 1000.0f;
-            if (g_cfg.show_decimals && secs < 10.0f) std::snprintf(buf, sizeof(buf), "%.1f", secs);
+            // Boons longer than ~16 minutes are either permanent (the game stores 0xFFFFFFFF ms,
+            // shown as an infinity) or so rare that whole hours will do; anything else is seconds.
+            if (snap.remaining_ms >= core::kPermanentMs) std::snprintf(buf, sizeof(buf), "~");
+            else if (secs >= 1000.0f) std::snprintf(buf, sizeof(buf), "%dh", (int)std::ceil(secs / 3600.0f));
+            else if (g_cfg.show_decimals && secs < 10.0f) std::snprintf(buf, sizeof(buf), "%.1f", secs);
             else std::snprintf(buf, sizeof(buf), "%d", (int)std::ceil(secs));
             ImVec2 ts = measure_number(font, text_px, buf);
             ImVec2 tp;
@@ -264,7 +283,9 @@ static void draw_one_overlay(uint32_t boon_id, size_t index, ImFont* font) {
             else
                 tp = ImVec2(icon.x + (S - ts.x) * 0.5f, icon.y + S * 0.56f - ts.y * 0.5f);
             ImU32 col = warn ? rgba(255, 90, 70, g_cfg.opacity) : rgba(255, 255, 255, g_cfg.opacity);
+            dl->PushClipRectFullScreen();   // a wider-than-usual value overflows the box rather than losing its ends
             draw_number(dl, font, text_px, tp, col, g_cfg.opacity, buf);
+            dl->PopClipRect();
             }   // remaining_known: no digits until arcdps delivers the duration
 
             if (g_cfg.show_uptime && snap.uptime_ms > 0) {

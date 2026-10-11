@@ -58,3 +58,15 @@ TEST_CASE("a polling source that went quiet is ignored after the stale timeout")
     CHECK(merge_realtime(arc(false, 0, 0, 0), rt, 1400, 500).active);
     CHECK_FALSE(merge_realtime(arc(false, 0, 0, 0), rt, 1600, 500).active);   // falls back to arcdps: inactive
 }
+
+TEST_CASE("stack_remaining_ms: plain countdown, wrap-safe clock, permanent stacks") {
+    using core::stack_remaining_ms;
+    CHECK(stack_remaining_ms(1000, 5000, 3000) == 3000);
+    CHECK(stack_remaining_ms(1000, 5000, 9000) == 0);                       // never negative
+    CHECK(stack_remaining_ms(0xFFFFF000u, 8000, 0x00000800u) == 1856);      // timeGetTime wrapped mid-stack (6144 ms elapsed)
+    // The game stores "permanent" as 0xFFFFFFFF ms (tooltip: ~1 month 2 weeks 5 days); it must not
+    // count down, wrap to zero, or depend on when it started.
+    CHECK(stack_remaining_ms(1000, 0xFFFFFFFFu, 2000) >= core::kPermanentMs);
+    CHECK(stack_remaining_ms(1000, 0xFFFFFFFFu, 0xF0000000u) >= core::kPermanentMs);
+    CHECK(stack_remaining_ms(1000, 0xFFFFFFFFu, 1000) == stack_remaining_ms(1000, 0xFFFFFFFFu, 0x80000000u));
+}
