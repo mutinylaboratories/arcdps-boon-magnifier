@@ -34,7 +34,11 @@ std::string serialize(const Config& c) {
       << "show_stacks=" << c.show_stacks << "\n"
       << "show_sweep=" << c.show_sweep << "\n"
       << "warn_seconds=" << c.warn_seconds << "\n"
-      << "opacity=" << c.opacity << "\n";
+      << "opacity=" << c.opacity << "\n"
+      << "project_pulses=" << c.project_pulses << "\n"
+      << "show_uptime=" << c.show_uptime << "\n"
+      << "show_squad=" << c.show_squad << "\n"
+      << "auto_update=" << c.auto_update << "\n";
     return o.str();
 }
 
@@ -74,6 +78,7 @@ void parse(Config& c, const std::string& text) {
         else if (key == "show_decimals") c.show_decimals = num != 0;
         else if (key == "show_stacks")   c.show_stacks = num != 0;
         else if (key == "show_uptime")   c.show_uptime = num != 0;
+        else if (key == "auto_update")   c.auto_update = num != 0;
         else if (key == "show_squad")    c.show_squad = num != 0;
         else if (key == "project_pulses") c.project_pulses = num != 0;
         else if (key == "show_sweep")    c.show_sweep = num != 0;

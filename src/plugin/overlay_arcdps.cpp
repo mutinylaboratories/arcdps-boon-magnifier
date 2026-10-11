@@ -11,6 +11,8 @@
 #include "imgui192.hpp"
 #include "overlay.hpp"
 #include "realtime_source.hpp"
+#include "host.hpp"
+#include "self_update.hpp"
 #include "state.hpp"
 
 namespace plugin {

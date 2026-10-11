@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(arcdps_boon_magnifier VERSION 0.1.2 LANGUAGES CXX RC)
+project(arcdps_boon_magnifier VERSION 0.1.3 LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(CORE_SRC
+    src/core/release_parse.cpp
     src/core/boon_tracker.cpp
     src/core/boon_events.cpp
     src/core/config.cpp
@@ -30,6 +31,7 @@ add_library(arcdps_boon_magnifier SHARED
     src/plugin/icon_texture.cpp
     src/plugin/realtime_source.cpp
     src/plugin/realtime_gw2.cpp
+    src/plugin/self_update.cpp
     src/plugin/resource.rc
     ${CORE_SRC}
     ${IMGUI180_SRC})
@@ -42,7 +44,7 @@ target_compile_definitions(arcdps_boon_magnifier PRIVATE
     PLUGIN_VERSION_MINOR=${PROJECT_VERSION_MINOR}
     PLUGIN_VERSION_PATCH=${PROJECT_VERSION_PATCH}
     NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(arcdps_boon_magnifier PRIVATE d3d11 dxgi winmm)
+target_link_libraries(arcdps_boon_magnifier PRIVATE d3d11 dxgi winmm winhttp)
 
 # ---- Core unit tests (no game needed) ----
 add_executable(core_tests
@@ -53,6 +55,7 @@ add_executable(core_tests
     tests/test_realtime_merge.cpp
     tests/test_sigscan.cpp
     tests/test_pulse_projector.cpp
+    tests/test_release_parse.cpp
     ${CORE_SRC})
 target_include_directories(core_tests PRIVATE src/core third_party/doctest)
 enable_testing()

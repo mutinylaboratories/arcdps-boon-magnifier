@@ -28,6 +28,7 @@ struct Config {
     bool  project_pulses = true;   // extend the countdown to a pulsing field's end once its pattern is recognised
     bool  show_squad = false;      // squad stability window (needs the realtime source)
     bool  show_uptime = false;     // small "up 12s" readout: how long the boon has been continuously active
+    bool  auto_update = true;      // without Nexus: check GitHub at startup and install a newer release (applies on restart)
     bool  show_sweep = true;       // darken the icon from the top as time runs out
     float warn_seconds = 2.0f;     // countdown turns red below this; 0 disables
     float opacity = 1.0f;

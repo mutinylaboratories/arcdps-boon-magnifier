@@ -54,6 +54,13 @@ outranks the installed version. Releases are produced by CI:
   re-signed build after a game patch reaches users through the same update path; a file
   beside the DLL still overrides it
 
+The plugin also carries its **own updater** (options → *Check for updates*): it reads the
+latest release from the GitHub API, downloads the `.dll` beside the running one, verifies
+the attached SHA-256, and swaps it in (the old file is renamed to `.dll.old`). Under
+plain arcdps it does this at startup when *Install updates automatically* is on; under
+Nexus it is only the manual check, since Nexus installs releases at launch. Either way
+the new version runs after the next game start: arcdps keeps the loaded module mapped.
+
 ### After a Guild Wars 2 patch
 
 The patterns are wildcarded and usually survive a patch, so the plugin scans the new exe

@@ -12,6 +12,7 @@
 #include "imgui.h"
 #include "overlay.hpp"
 #include "realtime_source.hpp"
+#include "self_update.hpp"
 #include "state.hpp"
 
 using namespace plugin;
@@ -110,6 +111,7 @@ static void addon_unload() {
     g_api->Events_Unsubscribe(kEvCombatSquad, nexus_combat);
     g_api->Events_Unsubscribe(kEvCombatLocal, nexus_combat_local);
     g_nexus_loaded = false;   // arcdps draws from here on, if it exported its UI callbacks
+    self_update_shutdown();
     realtime_source_shutdown();   // hooks live in Nexus' MinHook; they must go before we do
     config_flush();
     if (!arcdps_is_loaded()) icon_release();

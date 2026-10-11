@@ -43,6 +43,9 @@ game 2026-09-19).
 - [ ] Re-enter Actions secrets in the recreated `ska` (4) and `o2ptima_companion` (2) repos.
 - [ ] Bump `CMakeLists.txt` version and tag `v0.1.1` after the squad window is verified.
 - [ ] README: add a screenshot; trim the diagnostics prose once things settle.
+- [ ] Self-updater (v0.1.3): verified the install path against the real v0.1.2 release from the
+      preview host; still to see in game: "Check for updates" under Nexus, and the release
+      `.dll.sha256` asset being honoured (first release that ships one is v0.1.3).
 - [ ] Code-sign the release DLL eventually (unsigned + reads process memory + enumerates
       threads = the profile Defender's automatic sample submission uploads); until then,
       publish the SHA-256 in release notes.

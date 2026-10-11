@@ -33,18 +33,24 @@ jobs:
       - run: |
           build/Release/smoke_nexus.exe build/Release/arcdps_boon_magnifier.dll
           build/Release/smoke_arcdps.exe build/Release/arcdps_boon_magnifier.dll
-      - name: Release notes
+      - name: Release notes and checksum
         shell: pwsh
         run: |
           $build = (Get-Content signatures/gw2_build.txt).Trim()
           $ts = (Select-String -Path signatures/arcdps_boon_magnifier_sigs.ini -Pattern 'pe_timestamp=(\S+)').Matches[0].Groups[1].Value
+          $sha = (Get-FileHash build/Release/arcdps_boon_magnifier.dll -Algorithm SHA256).Hash.ToLower()
+          # The plugin's own updater verifies the download against this file.
+          [IO.File]::WriteAllText("build/Release/arcdps_boon_magnifier.dll.sha256", "$sha  arcdps_boon_magnifier.dll`n")
           @"
           Built for Guild Wars 2 build $build (exe timestamp $ts). Nexus installs the DLL automatically;
           the signature file is embedded, a copy is attached for manual installs.
+
+          SHA-256 of arcdps_boon_magnifier.dll: ``$sha``
           "@ | Set-Content notes.md
       - uses: softprops/action-gh-release@v2
         with:
           body_path: notes.md
           files: |
             build/Release/arcdps_boon_magnifier.dll
+            build/Release/arcdps_boon_magnifier.dll.sha256
             signatures/arcdps_boon_magnifier_sigs.ini

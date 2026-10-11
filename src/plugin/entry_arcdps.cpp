@@ -8,6 +8,7 @@
 #include "imgui192.hpp"
 #include "overlay.hpp"
 #include "realtime_source.hpp"
+#include "self_update.hpp"
 #include "state.hpp"
 
 using namespace plugin;
@@ -71,7 +72,10 @@ static arcdps_exports* mod_init() {
         g_arc.options_end = (void*)arc_options;
     }
     ensure_started(g_swapchain);
-    if (!nexus_is_loaded()) realtime_source_init(nullptr);
+    if (!nexus_is_loaded()) {
+        realtime_source_init(nullptr);
+        self_update_check(g_cfg.auto_update);   // Nexus runs its own updater when it is the host
+    }
     g_arc_loaded = true;
     return &g_arc;
 }
@@ -79,6 +83,7 @@ static arcdps_exports* mod_init() {
 static uintptr_t mod_release() {
     g_arc_loaded = false;
     config_flush();
+    self_update_shutdown();
     if (!nexus_is_loaded()) { realtime_source_shutdown(); icon_release(); }
     return 0;
 }

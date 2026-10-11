@@ -489,6 +489,26 @@ void draw_options() {
         break;
     }
 
+    ImGui::Separator();
+    {
+        const SelfUpdateStatus up = self_update_status();
+        ImGui::Text("Version %s", PLUGIN_VERSION);
+        ImGui::SameLine();
+        if (up.busy) {
+            ImGui::TextDisabled("working...");
+        } else if (up.available && !up.installed) {
+            if (ImGui::Button(("Install v" + up.latest).c_str())) self_update_check(true);
+        } else if (ImGui::Button("Check for updates")) {
+            self_update_check(false);
+        }
+        if (!up.text.empty()) ImGui::TextWrapped("%s", up.text.c_str());
+        if (!nexus_is_loaded())
+            changed |= ImGui::Checkbox("Install updates automatically at startup", &g_cfg.auto_update);
+        else
+            ImGui::TextDisabled("Nexus installs releases at launch; this is for checking mid-session.");
+        if (up.installed) ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Restart the game to use the new version.");
+    }
+
     if (ImGui::TreeNode("Diagnostics")) {
         const char* names[2] = {"Area ", "Local"};
         const uint32_t first = g_cfg.boons.empty() ? core::kBuffStability : g_cfg.boons.front();
