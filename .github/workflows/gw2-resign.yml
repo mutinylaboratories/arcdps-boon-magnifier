@@ -25,8 +25,11 @@ jobs:
   resign:
     runs-on: [self-hosted, windows, gw2]
     steps:
+      # Check out the branch tip at job start, not the commit the run was queued at - a run that
+      # waited while the PC was asleep would otherwise redo a re-sign that already landed.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           fetch-depth: 0
       - name: Regenerate signatures if the installed exe changed
         id: resign
